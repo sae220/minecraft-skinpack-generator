@@ -1,0 +1,12 @@
+services:
+  app:
+    build: ./app
+    expose:
+      - '8080'
+  test-client:
+    build: ./test-client
+    tty: true
+    volumes:
+      - type: bind
+        source: ./test-client/output
+        target: /opt/minecraft-skinpack-generator/test-client/output
