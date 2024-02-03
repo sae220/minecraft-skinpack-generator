@@ -1,3 +1,4 @@
+from collections import defaultdict
 from base64 import b64decode, b64encode
 from io import BytesIO
 import json
@@ -86,27 +87,24 @@ class SkinListFileContent(JsonFileContent):
 
 class TranslationFilesContent:
     """
-    [
-        "skinpack.skinpackIdOne": "Skinpack Name 1",
-        "skin.skinpackIdOne.skinIdOne": "Skin Name 1",
-        "skin.skinpackIdOne.skinIdTwo": "Skin Name 2",
+    {
+        "en_US": {
+            "skinpack.skinpackIdOne": "Skinpack Name 1",
+            "skin.skinpackIdOne.skinIdOne": "Skin Name 1",
+            "skin.skinpackIdOne.skinIdTwo": "Skin Name 2",
+            ...
+        },
         ...
-    ]
+    }
     """
     def __init__(self, skinpack: SkinpackType) -> None:
         self.skinpack_id = skinpack['id']
-        self.lst: list = []
+        self._dict:defaultdict[str, dict[str, str]]  = defaultdict(dict)
         self._add_skinpack(skinpack)
 
     def _add(self, item: TranslatableType, key_before_id: str) -> None:
         for translation in item['translations']:
-            if not self.lst or next(filter(lambda k: k['lang'] == translation['lang'], self.lst), None) is None:
-                self.lst.append({
-                    'lang': translation['lang'],
-                    'translations': {}
-                })
-            idx = [idx for idx, val in enumerate(self.lst) if val['lang'] == translation['lang']][0]
-            self.lst[idx]['translations'][f'{key_before_id}.{item["id"]}'] = translation['text']
+            self._dict[translation['lang']][f'{key_before_id}.{item["id"]}'] = translation['text']
 
     def _add_skinpack(self, skinpack: SkinpackType) -> None:
         self._add(skinpack, 'skinpack')
@@ -115,8 +113,8 @@ class TranslationFilesContent:
         self._add(skin, f'skin.{self.skinpack_id}')
 
     def dump(self, zf: ZipFile) -> None:
-        for translation_per_lang in self.lst:
-            zf.writestr(f'texts/{translation_per_lang["lang"]}.lang', '\n'.join([f'{key}={value}' for key, value in translation_per_lang['translations'].items()]))
+        for lang, translations in self._dict.items():
+            zf.writestr(f'texts/{lang}.lang', '\n'.join([f'{key}={value}' for key, value in translations.items()]))
 
 
 app = APIGatewayRestResolver()
